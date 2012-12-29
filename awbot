@@ -1,0 +1,267 @@
+#!/bin/bash
+
+# © 2012 fsckd <fsckdaemon@gmail.com>
+
+## Config stuff ##
+
+config=/etc/awbot.conf
+
+source "$config"
+
+[[ -z "$ircuser" ]] && ircuser="$nick"
+
+## Arguments ##
+
+mode="$1"   # push or branch
+if [[ push == "$mode" ]]
+then
+  old="$2"    # old commit
+  new="$3"    # newest commit
+  branch="$4" # branch pushed
+else
+  branch="$2" # branch changed to
+fi
+
+## IRC colors ##
+
+# source: http://cpansearch.perl.org/src/HINRIK/IRC-Utils-0.12/lib/IRC/Utils.pm
+
+irc_reset_color="`echo -e '\x03'`" # reset colors
+
+irc_color_char="`echo -e '\x03'`" # color character
+
+irc_white="${irc_color_char}00"
+irc_black="${irc_color_char}01"
+irc_blue="${irc_color_char}02"
+irc_green="${irc_color_char}03"
+irc_red="${irc_color_char}04"
+irc_brown="${irc_color_char}05"
+irc_purple="${irc_color_char}06"
+irc_orange="${irc_color_char}07"
+irc_yellow="${irc_color_char}08"
+irc_light_green="${irc_color_char}09"
+irc_teal="${irc_color_char}10"
+irc_light_cyan="${irc_color_char}11"
+irc_light_blue="${irc_color_char}12"
+irc_pink="${irc_color_char}13"
+irc_grey="${irc_color_char}14"
+irc_light_grey="${irc_color_char}15"
+
+## Ceate Message ##
+
+# Get information about git environment 
+# and generate the message for that.
+#
+# If mode=branch, tell channel
+#  LIVE user changed branch from old_branch to new_branch
+#
+# If mode=push, tell channel
+#  [repo] LIVE user pushed n commits to branch
+# or
+#  [repo] user has pushed n commits to branch
+# LIVE means branch is checked out and 
+# changes to it affect the system
+
+repo="$(basename "`pwd`")"
+repo="${repo%.git}"
+repomsg="$irc_reset_color$irc_light_cyan[$irc_reset_color$repo$irc_light_cyan]$irc_reset_color"
+
+curbranch="`cut -f 2 -d ' ' < HEAD`" # current branch
+git_branch_color="$irc_yellow"
+
+user="`id -nu`"
+
+case "$mode" in
+  branch)
+          message="$repomsg ${irc_red}LIVE${irc_reset_color} branch changed from $git_branch_color$curbranch$irc_reset_color to $irc_green$branch$irc_reset_color"
+          ;;
+    push)
+          [[ "$branch" == "$curbranch" ]] && LIVE=" ${irc_red}LIVE${irc_reset_color}" || LIVE=''
+          if [[ 0 == $(echo "$old" | sed 's,0\+,0,') ]]
+          then # new branch
+            message="$repomsg$LIVE $user pushed a new branch $git_branch_color$branch$irc_reset_color"
+          else
+            num="`git rev-list $old..$new | wc -l`" # number of commits pushed
+            message="$repomsg$LIVE $user pushed $irc_green$num commit$([[ $num == 1 ]] && echo || echo s)$irc_reset_color to $git_branch_color$branch$irc_reset_color"
+          fi
+          ;;
+       *)
+          message="$repomsg post-receive hook calling bot script incorrectly"
+          ;;
+esac
+
+#message="`echo -e 'hello from \x036☃'`" # DEBUG
+
+## IRC Bot ##
+
+# References:
+# RFCs   - http://irchelp.org/irchelp/rfc/
+# colors - http://cpansearch.perl.org/src/HINRIK/IRC-Utils-0.12/lib/IRC/Utils.pm
+# and loads of experimenting and testing
+# there are *a lot* of assumptions made
+
+cacert=/etc/ssl/certs/ca-certificates.crt # cert file
+
+ircwrite() # write each arg as a line to irc
+{
+  while (( "$#" ))
+  do
+    echo "$1" >&${irc[1]}
+    #echo "$1" >> awbot.out.log # DEBUG
+    shift
+  done
+}
+
+enclose01() # remove surrounding \x01, useful for CTCP
+{
+  # $1 - strip | add - strip surrounding \x01 or add them
+  # $2 - string to opperate on
+
+  case $1 in
+    strip) tr -d '\001' <<<"$2" # we are lazy
+           ;;
+      add) echo -e "\\x01$2\\x01" # doubly so
+  esac
+}
+
+ircmsg() # decompose an IRC message
+{
+  # RFCs 1459 and 2812
+
+  unset mprefix mname muser mhost mcmd mparam mtrailing
+
+  local queue="$(tr -d '\r' <<<"$line")" # remainder of the line to "parse"
+                                         # right now it's the whole line
+                                         # minus any \r
+
+  if [[ "$queue" =~ ^: ]]
+  then
+    # we has a prefex
+    queue="${queue#:}" # remove leading :
+    ircmsgbreak ' ' mprefix queue # extract prefix!
+
+    # break up the prefix into name, user and host
+    local pqueue="$mprefix" # prefix queue XD
+    ircmsgbreak '!' mname pqueue # extract name
+    [[ -n "$pqueue" ]] && ircmsgbreak '@' muser pqueue # extract user
+    [[ -n "$pqueue" ]] && mhost="$pqueue" # extract host
+  fi
+
+  [[ -z "$queue" ]] && return # if queue is blank, we're finished here
+                              # this is frequent, I miss monads :(
+
+  # get command
+  ircmsgbreak ' ' mcmd queue
+
+  # extract message parameters
+  # RFC 2812 says up to 15 parameters
+  local tmpstr=""
+  mtrailing=false
+  for i in `seq 0 14`
+  do
+    [[ -z "$queue" ]] && return # yup yup yup
+
+    if [[ "$queue" =~ ^: ]]
+    then
+      # we has a tail (see RFC)
+      mparam[$i]="${queue#:}" # remove leading :
+      mtrailing=true
+      return # we're done
+    fi
+
+    ircmsgbreak ' ' tmpstr queue
+    mparam[$i]="$tmpstr"
+  done
+}
+
+ircmsgbreak() # facilitate message decomposition
+{
+  # input:
+  #  delimiter string - blank if none
+  #  mhead - variable to store extracted value in
+  #  mtail - contains the string to be "parsed", 
+  #          on return it is the string minus the value
+  # model as a queue, this function pops the head of a queue :)
+
+  # copy the tail
+  local mtail="$(eval echo \"\$$3\")"
+
+  # handle suffix
+  if [[ -n "$1" ]]
+  then
+    # if there is a suffix we split the head from the tail
+    # there is no suffix in $mtail, then mhead is the last item in the queue
+    if [[ "$mtail" =~ .*${1}.* ]]
+    then
+      # first pop the head :)
+      local mhead="${mtail%%$1*}"
+      # remove head and suffix from tail
+      mtail="${mtail#$mhead$1}"
+    else
+      # no suffix, no more items to pop off
+      mhead="$mtail"
+      mtail=''
+    fi
+  fi
+
+  # save values
+  read $2 <<<"$mhead"
+  read $3 <<<"$mtail"
+}
+
+coproc irc { openssl s_client -connect "$server:$port" -CAfile "$cacert" -verify true -quiet; } 2>/dev/null
+
+initstage=true   # start in initial stage
+nicknum=0        # number to append to nick if nick is in use
+nickbase="$nick" # base to derive alternative nicks from 
+
+while read line
+do
+  #echo "$line" >> awbot.in.log # DEBUG
+
+  ircmsg # deconstruct message
+
+  if $initstage && [[ "$line" =~ ^: ]]
+  then
+    # connected to the server
+    # first send password
+    [[ -n "$pass" ]] && ircwrite "pass $pass"
+    # from here on, ignore everything NickServ has to say
+    # send nick and user commands
+    ircwrite "nick $nick" "user $ircuser * * $ircname"
+    # leave initial stage
+    initstage=false
+  elif [[ $mcmd == 433 ]]
+  then
+    # name is in use, choose another
+    nicknum=$(( nicknum + 1 ))
+    nick="$nickbase$nicknum"
+    ircwrite "nick $nick"
+  elif [[ $mcmd == 001 ]]
+  then
+    # we're free to act
+    # why not join a channel? :)
+    ircwrite "join $channel"
+  elif [[ $mcmd == 366 ]]
+  then
+    # assuming that if end of nick list command received,
+    # it is safe to post to the channel
+    # quickly post message, leave and quit
+    ircwrite "notice $channel :$message" "part $channel" "quit"
+    break # done!
+  elif [[ $mcmd == PING ]]
+  then
+    # must respond to PING
+    if [[ ${#mparam[@]} == 1 ]] && $mtrailing
+    then
+      ircwrite "pong :${mparam[0]}" # was trailing
+    else
+      ircwrite "pong ${mparam[0]}"
+    fi
+  elif [[ $mcmd == PRIVMSG ]] && [[ "$(enclose01 strip "${mparam[1]}")" == VERSION ]]
+  then
+    # CTCP VERSION request
+    ircwrite "notice $mname :$(enclose01 add "VERSION Arch Linux Women IRC bot")"
+  fi
+  # no else because other messages are ignored atm
+done <&${irc[0]}

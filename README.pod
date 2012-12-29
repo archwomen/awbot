@@ -1,0 +1,69 @@
+=head1 NAME
+
+awbot - Arch Linux Women IRC bot
+
+=head1 SYNOPSIS
+
+awbot push E<lt>I<old_commit>E<gt> E<lt>I<new_commit>E<gt> E<lt>I<branch_name>E<gt>E<10> E<8>E<8>
+awbot branch E<lt>I<new_branch_name>E<gt>
+
+=head1 DESCRIPTION
+
+awbot is a simple IRC robot which posts notifications of git events to an IRC channel. It is intended to be called from within git hooks or from scripts. OpenSSL is required to connect to an IRC server.
+
+An example invocation from a I<post-receive> hook on the Arch Women server:
+
+ 	read old new branch
+ 	awbot push "$old" "$new" "$branch"
+
+The configuration file is I</etc/awbot.conf>.
+
+=head1 CONFIGURATION
+
+=over 4
+
+=item server=
+
+The DNS address of the IRC server to connect to. Default value is given for freenode.
+
+=item port=
+
+The port to connect to. This must be the port used for SSL connections.
+
+=item nick=
+
+An IRC nick to use. Upon connection, if the nick is already in use the bot will generate alternative by appending an integer.
+ 
+=item pass=
+
+The corresponding password for the IRC nick. This is optional and can be left blank if there is no password.
+
+Be sure to give the correct password. The bot will ignore NickServ.
+
+=item ircname=
+
+A name like a real name.
+
+=item ircuser=
+
+A user name like one used for UNIX accounts. It is optional and if not specified the value for I<nick> is used.
+
+=item channel=
+
+The channel to join and post messages to.
+
+=back
+
+=head1 COPYRIGHT
+
+awbot is copyrighted work. Use `git shortlog -s` to get a list of current authors and contributors and their contact information.
+
+awbot is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+=head1 WEBSITE
+
+http://archwomen.org

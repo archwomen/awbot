@@ -1,0 +1,13 @@
+
+To install do something like,
+
+$ make PREFIX=/usr DESTDIR="$pkgdir" install
+
+By default installs to /usr/local. Use PREFIX to 
+change that.
+
+DESTDIR is useful for packaging scripts.
+
+There is a PKGBUILD for Arch Linux users. It is 
+guarded by a fierce dragon.
+
