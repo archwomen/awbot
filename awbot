@@ -6,9 +6,20 @@
 
 config=/etc/awbot.conf
 
+# verify configuration exists and can be sourced
+! [[ -f "$config" ]] || ! [[ -r "$config" ]] &&
+{ echo error: unable to read configuration >&2 ; exit 1 ; }
+
 source "$config"
 
 [[ -z "$ircuser" ]] && ircuser="$nick"
+[[ -z "$server" ]]  ||
+[[ -z "$port" ]]    ||
+[[ -z "$nick" ]]    ||
+[[ -z "$pass" ]]    ||
+[[ -z "$ircname" ]] ||
+[[ -z "$channel" ]] &&
+{ echo error: configuration file is incomplete >&2 ; exit 1 ; }
 
 ## Arguments ##
 
