@@ -16,22 +16,46 @@ source "$config"
 [[ -z "$server" ]]  ||
 [[ -z "$port" ]]    ||
 [[ -z "$nick" ]]    ||
-[[ -z "$pass" ]]    ||
+#[[ -z "$pass" ]]    ||
 [[ -z "$ircname" ]] ||
 [[ -z "$channel" ]] &&
 { echo error: configuration file is incomplete >&2 ; exit 1 ; }
 
 ## Arguments ##
 
-mode="$1"   # push or branch
-if [[ push == "$mode" ]]
-then
-  old="$2"    # old commit
-  new="$3"    # newest commit
-  branch="$4" # branch pushed
-else
-  branch="$2" # branch changed to
-fi
+# function to print unhelpful usage error and then exit
+usage_error() { echo "error: incorrect usage, please see manual" >&2 ; exit 1 ; }
+
+# loop over parameters
+while (( "$#" ))
+do
+  case "$1" in
+         git) # request to post notices of git activity to the channel
+              [[ -z "$2" ]] && usage_error
+              mode="$2" # push or branch
+              if [[ push == "$mode" ]]
+              then
+                old="$3"    # old commit
+                new="$4"    # newest commit
+                branch="$5" # branch pushed
+              else
+                branch="$3" # branch changed to
+              fi
+              break
+              ;;
+           *) # may be a config option!
+              option="${1%%=*}"
+              value="${1#=*}"
+              if grep -q @"$option"@ <<<"@server@port@nick@pass@ircname@ircuser@channel@"
+              then
+                [[ -z "$value" ]] && [[ "$option" != pass ]] && usage_error
+                eval "$1" # set value
+              else
+                usage_error
+              fi
+  esac
+  shift
+done
 
 ## IRC colors ##
 

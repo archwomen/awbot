@@ -4,8 +4,8 @@ awbot - Arch Linux Women IRC bot
 
 =head1 SYNOPSIS
 
-awbot push E<lt>I<old_commit>E<gt> E<lt>I<new_commit>E<gt> E<lt>I<branch_name>E<gt>E<10> E<8>E<8>
-awbot branch E<lt>I<new_branch_name>E<gt>
+awbot [I<config_options>] git push E<lt>I<old_commit>E<gt> E<lt>I<new_commit>E<gt> E<lt>I<branch_name>E<gt>E<10> E<8>E<8>
+awbot [I<config_options>] git branch E<lt>I<new_branch_name>E<gt>
 
 =head1 DESCRIPTION
 
@@ -14,9 +14,9 @@ awbot is a simple IRC robot which posts notifications of git events to an IRC ch
 An example invocation from a I<post-receive> hook on the Arch Women server:
 
  	read old new branch
- 	awbot push "$old" "$new" "$branch"
+ 	awbot git push "$old" "$new" "$branch"
 
-The configuration file is I</etc/awbot.conf>.
+The configuration file is I</etc/awbot.conf>. Configuration can be overridden by listing I<options> in the command line.
 
 =head1 CONFIGURATION
 
