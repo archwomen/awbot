@@ -16,7 +16,7 @@ An example invocation from a I<post-receive> hook on the Arch Women server:
  	read old new branch
  	awbot git push "$old" "$new" "$branch"
 
-The configuration file is I</etc/awbot.conf>. Configuration can be overridden by listing I<options> in the command line.
+The configuration file is I</etc/awbot.conf>. Configuration can be overridden on the command line by listing I<config_options>.
 
 =head1 CONFIGURATION
 
@@ -39,6 +39,8 @@ An IRC nick to use. Upon connection, if the nick is already in use the bot will 
 The corresponding password for the IRC nick. This is optional and can be left blank if there is no password.
 
 Be sure to give the correct password. The bot will ignore NickServ.
+
+B<WARNING> When overriden from the command line, the shell may store the password in a history file.
 
 =item ircname=
 
@@ -64,6 +66,8 @@ This program is distributed in the hope that it will be useful, but WITHOUT ANY 
 
 You should have received a copy of the GNU Affero General Public License along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-=head1 WEBSITE
+=head1 WEBSITES
 
 http://archwomen.org
+
+https://github.com/archwomen/awbot

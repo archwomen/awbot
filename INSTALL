@@ -1,13 +1,13 @@
+There is no configuring or building the code as awbot is a single bash script.
 
-To install do something like,
+To install awbot do,
+$ make [options] install
 
-$ make PREFIX=/usr DESTDIR="$pkgdir" install
-
-By default installs to /usr/local. Use PREFIX to 
-change that.
-
-DESTDIR is useful for packaging scripts.
-
-There is a PKGBUILD for Arch Linux users. It is 
-guarded by a fierce dragon.
-
+There are three options,
+  PREFIX    - path to where awbot is installed
+              default is /usr/local
+  MANPREFIX - path to install the man page to
+              default is $(PREFIX)/share/man
+  DESTDIR   - where to put everything
+              for use in packaging script
+              for example, DESTDIR=${HOME}/build/awbot
