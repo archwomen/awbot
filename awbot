@@ -61,7 +61,7 @@ done
 
 # source: http://cpansearch.perl.org/src/HINRIK/IRC-Utils-0.12/lib/IRC/Utils.pm
 
-irc_reset_color="`echo -e '\x03'`" # reset colors
+irc_reset_color="`echo -e '\x0f'`" # reset colors
 
 irc_color_char="`echo -e '\x03'`" # color character
 
@@ -82,6 +82,10 @@ irc_pink="${irc_color_char}13"
 irc_grey="${irc_color_char}14"
 irc_light_grey="${irc_color_char}15"
 
+# wrap a string in a color
+# wrapcolor ${irc_red} foo -> ${irc_reset_color}${irc_red}foo${irc_reset_color}
+wrapcolor() { echo -n "$irc_reset_color$1$2$irc_reset_color" ; }
+
 ## Ceate Message ##
 
 # Get information about git environment 
@@ -99,29 +103,38 @@ irc_light_grey="${irc_color_char}15"
 
 repo="$(basename "`pwd`")"
 repo="${repo%.git}"
-repomsg="$irc_reset_color$irc_light_cyan[$irc_reset_color$repo$irc_light_cyan]$irc_reset_color"
+repomsg="`wrapcolor "$irc_light_cyan" "$repo"`"
 
-curbranch="`cut -f 2 -d ' ' < HEAD`" # current branch
+curbranch="`cut -f 2 -d ' ' < HEAD`" # currently checkedout branch
+
+# trim branch names, excise "refs/head/" or just "refs/"
+trimbranch() { [[ "$1" =~ ^refs/heads/ ]] && echo "${1#refs/heads/}" || echo "${1#refs/}" ; }
+curbranchtrim="`trimbranch "$curbranch"`"
+branchtrim="`trimbranch "$branch"`"
+
 git_branch_color="$irc_yellow"
 
 user="`id -nu`"
 
 case "$mode" in
   branch)
-          message="$repomsg ${irc_red}LIVE${irc_reset_color} branch changed from $git_branch_color$curbranch$irc_reset_color to $irc_green$branch$irc_reset_color"
+          message="$repomsg|`wrapcolor "$git_branch_color" "$curbranchtrim"`->$irc_green$branch `wrapcolor "$irc_red" LIVE` branch checkout by $user"
           ;;
     push)
-          [[ "$branch" == "$curbranch" ]] && LIVE=" ${irc_red}LIVE${irc_reset_color}" || LIVE=''
+          [[ "$branch" == "$curbranch" ]] && LIVE=" `wrapcolor "$irc_red" LIVE`" || LIVE=''
+          message="$repomsg|`wrapcolor "$git_branch_color" "$branchtrim"`$LIVE $user pushed"
           if [[ 0 == $(echo "$old" | sed 's,0\+,0,') ]]
           then # new branch
-            message="$repomsg$LIVE $user pushed a new branch $git_branch_color$branch$irc_reset_color"
+            message="$message a new branch"
           else
-            num="`git rev-list $old..$new | wc -l`" # number of commits pushed
-            message="$repomsg$LIVE $user pushed $irc_green$num commit$([[ $num == 1 ]] && echo || echo s)$irc_reset_color to $git_branch_color$branch$irc_reset_color"
+            numcommits="`git rev-list $old..$new | wc -l`" # number of commits pushed
+            [[ $numcommits == 1 ]] \
+            && message="$message a commit: $irc_purple`git log --format=%s -1 "$branch"`" \
+            || message="$message $irc_green$numcommits commits"
           fi
           ;;
        *)
-          message="$repomsg post-receive hook calling bot script incorrectly"
+          message="$repomsg post-receive hook calling awbot incorrectly"
           ;;
 esac
 
