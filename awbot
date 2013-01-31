@@ -101,7 +101,13 @@ wrapcolor() { echo -n "$irc_reset_color$1$2$irc_reset_color" ; }
 # LIVE means branch is checked out and 
 # changes to it affect the system
 
-repo="$(basename "`pwd`")"
+# check if gitolite (GL_) is used
+if [[ -z "$GL_REPO" ]]
+then
+  repo="$(basename "`pwd`")"
+else
+  repo="$GL_REPO"
+fi
 repo="${repo%.git}"
 repomsg="`wrapcolor "$irc_light_cyan" "$repo"`"
 
@@ -114,7 +120,13 @@ branchtrim="`trimbranch "$branch"`"
 
 git_branch_color="$irc_yellow"
 
-user="`id -nu`"
+# check if gitolite is used
+if [[ -z "$GL_USER" ]]
+then
+  user="`id -nu`"
+else
+  user="$GL_USER"
+fi
 
 case "$mode" in
   branch)
@@ -196,7 +208,6 @@ ircmsg() # decompose an IRC message
   fi
 
   [[ -z "$queue" ]] && return # if queue is blank, we're finished here
-                              # this is frequent, I miss monads :(
 
   # get command
   ircmsgbreak ' ' mcmd queue
