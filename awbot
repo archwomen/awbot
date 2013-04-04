@@ -2,24 +2,12 @@
 
 # © 2012 fsckd <fsckdaemon@gmail.com>
 
-## Config stuff ##
+## Load config ##
 
 config=/etc/awbot.conf
 
-# verify configuration exists and can be sourced
-! [[ -f "$config" ]] || ! [[ -r "$config" ]] &&
-{ echo error: unable to read configuration >&2 ; exit 1 ; }
-
-source "$config"
-
-[[ -z "$ircuser" ]] && ircuser="$nick"
-[[ -z "$server" ]]  ||
-[[ -z "$port" ]]    ||
-[[ -z "$nick" ]]    ||
-#[[ -z "$pass" ]]    ||
-[[ -z "$ircname" ]] ||
-[[ -z "$channel" ]] &&
-{ echo error: configuration file is incomplete >&2 ; exit 1 ; }
+# source config if exists and readable
+[[ -f "$config" ]] && [[ -r "$config" ]] && source "$config"
 
 ## Arguments ##
 
@@ -56,6 +44,18 @@ do
   esac
   shift
 done
+
+## Verify Config ##
+
+[[ -z "$ircuser" ]] && ircuser="$nick"
+[[ -z "$server" ]]  ||
+[[ -z "$port" ]]    ||
+[[ -z "$nick" ]]    ||
+#[[ -z "$pass" ]]    ||
+[[ -z "$ircname" ]] ||
+[[ -z "$channel" ]] &&
+{ echo error: configuration is incomplete >&2 ; exit 1 ; }
+
 
 ## IRC colors ##
 
