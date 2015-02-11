@@ -270,7 +270,7 @@ ircmsgbreak() # facilitate message decomposition
 }
 
 #coproc irc { openssl s_client -connect "$server:$port" -CAfile "$cacert" -verify true -quiet; } 2>/dev/null
-coproc irc { socat - "OPENSSL:$server:$port",method=tlsv1,capath="$capath"; } 2>/dev/null
+coproc irc { socat - "OPENSSL:$server:$port",method=tls1.2,capath="$capath"; } 2>/dev/null
 
 initstage=true   # start in initial stage
 nicknum=0        # number to append to nick if nick is in use
